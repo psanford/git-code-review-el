@@ -10,13 +10,17 @@
         nil))))
 
 (defun git-code-review-get-all-values (name)
-  (process-lines "git" "config" "--get-all" (concat "codereview." name)))
+  (ignore-errors
+    (process-lines "git" "config" "--get-all" (concat "codereview." name))))
 
 (defun git-code-review-set-value (name value)
   (process-file "git" nil nil nil "config" (concat "codereview." name) value))
 
 (defun git-code-review-add-value (name value)
   (process-file "git" nil nil nil "config" "--add" (concat "codereview." name) value))
+
+(defun git-code-review-clear-all-values (name)
+  (process-file "git" nil nil nil "config" "--unset-all" (concat "codereview." name)))
 
 (defun git-code-review-filter-commits ()
   "Hide commits that have already been reviewed"
@@ -48,6 +52,8 @@
   (git-code-review-filter-commits)
   (beginning-of-buffer)
   (magit-wash-log)
+  (if (and (bobp) (eobp))
+      (insert "Nothing to review!"))
   (setq buffer-read-only t)
   (git-code-review-mode))
 
@@ -73,7 +79,9 @@
   "Mark all unviewed commits as reviewed"
   (interactive)
   (when (y-or-n-p "Are you sure you want to mark all as reviewed? ")
-    (git-code-review-set-value "since" (magit-rev-parse "origin/master"))))
+    (git-code-review-set-value "since" (magit-rev-parse "origin/master"))
+    (git-code-review-clear-all-values "skip")
+    (git-code-review)))
 
 (defun git-code-review-mark-commit-as-reviewed ()
   "Mark current commit as reviewed"
