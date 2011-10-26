@@ -9,8 +9,26 @@
             (buffer-substring (line-beginning-position) (line-end-position)))
         nil))))
 
+(defun git-code-review-get-all-values (name)
+  (process-lines "git" "config" "--get-all" (concat "codereview." name)))
+
 (defun git-code-review-set-value (name value)
   (process-file "git" nil nil nil "config" (concat "codereview." name) value))
+
+(defun git-code-review-add-value (name value)
+  (process-file "git" nil nil nil "config" "--add" (concat "codereview." name) value))
+
+(defun git-code-review-filter-commits ()
+  "Hide commits that have already been reviewed"
+  (save-excursion
+    (goto-char (point-min))
+    (let ((reviewed-commits (git-code-review-get-all-values "skip")))
+      (while (not (eobp))
+        (beginning-of-line)
+        (forward-word)
+        (if (member (current-word) reviewed-commits)
+            (delete-region (line-beginning-position) (+ 1 (line-end-position)))
+          (forward-line 1))))))
 
 (defun git-code-review ()
   "Run code review for current git repository"
@@ -19,13 +37,6 @@
   (setq buffer-read-only nil)
   (erase-buffer)
   (let ((since (git-code-review-get-value "since")))
-    (message "<%s>"
-             (concat "git log  --graph --pretty=oneline --decorate=full "
-                     (if since
-                         (concat since "..")
-                       "")
-                     "origin/master"))
-
     (insert
      (shell-command-to-string
       (concat "git log  --graph --pretty=oneline --decorate=full "
@@ -33,6 +44,7 @@
                   (concat since "..")
                 "")
               "origin/master"))))
+  (git-code-review-filter-commits)
   (beginning-of-buffer)
   (magit-wash-log)
   (setq buffer-read-only t)
