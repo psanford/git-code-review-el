@@ -36,6 +36,7 @@
   (switch-to-buffer (get-buffer-create "*code-review*"))
   (setq buffer-read-only nil)
   (erase-buffer)
+  (setq default-directory (locate-dominating-file default-directory ".git"))
   (let ((since (git-code-review-get-value "since")))
     (insert
      (shell-command-to-string
@@ -54,7 +55,7 @@
   "Returns commit sha for current line"
   (save-excursion
     (beginning-of-line)
-    (current-word)))
+    (magit-rev-parse (current-word))))
 
 (defun git-code-review-view-diff ()
   "View diff for revision at point"
@@ -71,13 +72,23 @@
 (defun git-code-review-mark-all-as-reviewed ()
   "Mark all unviewed commits as reviewed"
   (interactive)
-  (when (y-or-n-p "Are you sure you want to mark all as reviewed?")
+  (when (y-or-n-p "Are you sure you want to mark all as reviewed? ")
     (git-code-review-set-value "since" (magit-rev-parse "origin/master"))))
+
+(defun git-code-review-mark-commit-as-reviewed ()
+  "Mark current commit as reviewed"
+  (interactive)
+  (let ((commit (git-code-review-current-commit)))
+    (when (y-or-n-p
+           (format "Are you sure you want to mark %s as reviewed? " commit))
+      (git-code-review-add-value "skip" commit)
+      (git-code-review))))
 
 (defvar git-code-review-mode-map
   (let ((map (make-keymap)))
     (define-key map (kbd "RET") 'git-code-review-view-diff)
     (define-key map (kbd "g") 'git-code-review-view-in-github)
+    (define-key map (kbd "r") 'git-code-review-mark-commit-as-reviewed)
     map))
 
 (define-derived-mode git-code-review-mode fundamental-mode "Git Code Review"
