@@ -68,6 +68,23 @@
   (interactive)
   (magit-show-commit (git-code-review-current-commit)))
 
+(defvar git-code-review-highlight-overlay nil)
+(defun git-code-review-highlight-line ()
+  "Highlight current line"
+  (if (not git-code-review-highlight-overlay)
+      (let ((ov (make-overlay 1 1)))
+        (overlay-put ov 'face 'magit-item-highlight)
+        (setq git-code-review-highlight-overlay ov)))
+  (move-overlay git-code-review-highlight-overlay
+                (line-beginning-position)
+                (save-excursion
+                  (forward-line 1)
+                  (line-beginning-position))))
+
+(defun git-code-review-post-command-hook ()
+  (git-code-review-highlight-line))
+
+;;XXX Make this get the url based on remotes
 (defun git-code-review-view-in-github ()
   "Open commit in github"
   (interactive)
@@ -101,6 +118,8 @@
 
 (define-derived-mode git-code-review-mode fundamental-mode "Git Code Review"
   "Mode for reviewing commits to a git repository
-\\{git-code-review-mode-map}")
+\\{git-code-review-mode-map}"
+
+  (add-hook 'post-command-hook #'git-code-review-post-command-hook t t))
 
 (provide 'git-code-review)
