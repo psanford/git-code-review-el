@@ -105,14 +105,15 @@
     (git-code-review-clear-all-values "skip")
     (git-code-review)))
 
-(defun git-code-review-mark-commit-as-reviewed ()
-  "Mark current commit as reviewed"
+(defun git-code-review-marked-commits-as-reviewed ()
+  "Take currently marked commits and set them to reviewed"
   (interactive)
-  (let ((commit (git-code-review-current-commit)))
-    (when (y-or-n-p
-           (format "Are you sure you want to mark %s as reviewed? " commit))
-      (git-code-review-add-value "skip" commit)
-      (git-code-review))))
+  (if (null git-code-review-marked-commits)
+      (message "No marked commits")
+    (mapc (apply-partially 'git-code-review-add-value "skip")
+          git-code-review-marked-commits)
+    (setq git-code-review-marked-commits '())
+    (git-code-review)))
 
 (defvar git-code-review-marked-commits '())
 (make-variable-buffer-local 'git-code-review-marked-commits)
@@ -144,7 +145,7 @@
   (let ((map (make-keymap)))
     (define-key map (kbd "RET") 'git-code-review-view-diff)
     (define-key map (kbd "g") 'git-code-review-view-in-github)
-    (define-key map (kbd "r") 'git-code-review-mark-commit-as-reviewed)
+    (define-key map (kbd "R") 'git-code-review-marked-commits-as-reviewed)
     (define-key map (kbd "m") 'git-code-review-mark-commit)
     (define-key map (kbd "M") '(lambda ()
                                  (interactive)
