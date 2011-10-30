@@ -34,6 +34,20 @@
             (delete-region (line-beginning-position) (+ 1 (line-end-position)))
           (forward-line 1))))))
 
+(defun git-code-review-rehighlight-marked-commits ()
+  "Rehighlight marked commits after buffer has refreshed"
+  (when (not (null git-code-review-marked-commits))
+    (save-excursion
+      (goto-char (point-min))
+      (while (not (eobp))
+        (beginning-of-line)
+        (forward-word)
+        (when (member (git-code-review-current-commit) git-code-review-marked-commits)
+          (let ((overlay (apply 'make-overlay (git-code-review-current-commit-region))))
+            (overlay-put overlay 'face 'magit-item-mark)
+            (overlay-put overlay 'git-code-review-type 'mark)))
+        (forward-line 1)))))
+
 (defun git-code-review ()
   "Run code review for current git repository"
   (interactive)
@@ -52,10 +66,12 @@
   (git-code-review-filter-commits)
   (beginning-of-buffer)
   (magit-wash-log)
+  (git-code-review-rehighlight-marked-commits)
   (if (and (bobp) (eobp))
       (insert "Nothing to review!"))
   (setq buffer-read-only t)
-  (git-code-review-mode))
+  (if (neq major-mode 'git-code-review-mode)
+      (git-code-review-mode)))
 
 (defun git-code-review-current-commit ()
   "Returns commit sha for current line"
@@ -134,11 +150,10 @@
   "Mark current commit"
   (interactive "p")
   (let ((commit (git-code-review-current-commit))
-        (overlay))
-      (add-to-list 'git-code-review-marked-commits commit)
-      (setq overlay (apply 'make-overlay (git-code-review-current-commit-region)))
-      (overlay-put overlay 'face 'magit-item-mark)
-      (overlay-put overlay 'git-code-review-type 'mark))
+        (overlay (apply 'make-overlay (git-code-review-current-commit-region))))
+    (add-to-list 'git-code-review-marked-commits commit)
+    (overlay-put overlay 'face 'magit-item-mark)
+    (overlay-put overlay 'git-code-review-type 'mark))
   (forward-line (or line-move-number 1)))
 
 (defvar git-code-review-mode-map
@@ -159,7 +174,6 @@
 (define-derived-mode git-code-review-mode fundamental-mode "Git Code Review"
   "Mode for reviewing commits to a git repository
 \\{git-code-review-mode-map}"
-
   (add-hook 'post-command-hook #'git-code-review-post-command-hook t t))
 
 (provide 'git-code-review)
