@@ -141,6 +141,31 @@
            (insert (git-code-review-status-commit-log commit)))
         (git-code-review-get-all-values "skip")))
 
+(defun git-code-review-update-since-value ()
+  "Move the since value forward as far as possible based on skip
+commits"
+  (setq default-directory (locate-dominating-file default-directory ".git"))
+  (let* ((since (git-code-review-get-value "since"))
+         (reviewed-commits (git-code-review-get-all-values "skip"))
+         (new-since)
+         (revs (reverse (ignore-errors (process-lines
+                                        "git" "log" "--pretty=format:%H"
+                                        (if since
+                                            (concat since "..")
+                                          "")
+                                        "origin/master")))))
+    (while (and
+            (not (null revs))
+            (member (car revs) reviewed-commits))
+      (setq new-since (car revs))
+      (setq revs (cdr revs))
+      (setq reviewed-commits (remove new-since reviewed-commits)))
+    (when new-since
+      (git-code-review-set-value "since" new-since)
+      (git-code-review-clear-all-values "skip")
+      (mapc (apply-partially 'git-code-review-add-value "skip")
+            reviewed-commits))))
+
 (defun git-code-review-marked-commits-as-reviewed ()
   "Take currently marked commits and set them to reviewed"
   (interactive)
