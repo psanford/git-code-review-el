@@ -121,6 +121,26 @@
     (git-code-review-clear-all-values "skip")
     (git-code-review)))
 
+(defun git-code-review-status-commit-log (rev)
+  (shell-command-to-string
+   (concat "git log --pretty=oneline --abbrev-commit "
+           rev "^.." rev)))
+
+(defun git-code-review-status ()
+  "Show code-review state"
+  (interactive)
+  (pop-to-buffer (get-buffer-create "*git-code-review-status*"))
+  (setq buffer-read-only nil)
+  (erase-buffer)
+  (insert "Since:\n"
+          (git-code-review-status-commit-log
+           (git-code-review-get-value "since"))
+          "\n")
+  (insert "Skip:\n")
+  (mapc '(lambda (commit)
+           (insert (git-code-review-status-commit-log commit)))
+        (git-code-review-get-all-values "skip")))
+
 (defun git-code-review-marked-commits-as-reviewed ()
   "Take currently marked commits and set them to reviewed"
   (interactive)
@@ -129,6 +149,7 @@
     (mapc (apply-partially 'git-code-review-add-value "skip")
           git-code-review-marked-commits)
     (setq git-code-review-marked-commits '())
+    (git-code-review-update-since-value)
     (git-code-review)))
 
 (defvar git-code-review-marked-commits '())
