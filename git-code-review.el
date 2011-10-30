@@ -100,14 +100,23 @@
 
 (defun git-code-review-current-commit ()
   "Returns commit sha for current line"
-  (save-excursion
-    (beginning-of-line)
-    (magit-rev-parse (current-word))))
+  (or git-code-review-buffer-current-commit
+      (save-excursion
+        (beginning-of-line)
+        (magit-rev-parse (current-word)))))
+
+(defvar git-code-review-buffer-current-commit nil)
+(make-variable-buffer-local 'git-code-review-buffer-current-commit)
 
 (defun git-code-review-view-diff ()
   "View diff for revision at point"
   (interactive)
-  (magit-show-commit (git-code-review-current-commit)))
+  (let ((magit-commit-buffer-name "*code-review-commit*")
+        (commit (git-code-review-current-commit)))
+    (magit-show-commit commit)
+    (set-buffer magit-commit-buffer-name)
+    (setq git-code-review-buffer-current-commit commit)
+    (git-code-review-commit-mode t)))
 
 (defun git-code-review-current-commit-region ()
   "Returns a list of point min and point max for current commit"
@@ -246,5 +255,18 @@ commits"
   "Mode for reviewing commits to a git repository
 \\{git-code-review-mode-map}"
   (add-hook 'post-command-hook #'git-code-review-post-command-hook t t))
+
+(defvar git-code-review-commit-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "g") 'git-code-review-view-in-github)
+    map))
+
+(define-minor-mode git-code-review-commit-mode
+  "Minor mode for git code review commit buffers
+
+\\{{git-code-review-commit-mode-map}}
+"
+  :init-value nil
+  :key-map git-code-review-commit-mode-map)
 
 (provide 'git-code-review)
